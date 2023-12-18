@@ -65,6 +65,12 @@ class SGFNode(OrderedDict[str, SGFPropValues]):
             pretty_str += "\n" + " " * indent + key + str(value)
         return pretty_str
 
+    def get_move(self) -> tuple[str, SGFPropValues] | None:
+        if "B" in self:
+            return "B", self["B"]
+        if "W" in self:
+            return "W", self["W"]
+
 
 class SGFTree:
     def __init__(
@@ -197,7 +203,7 @@ class SGFParser:
         self.index = 0
 
     @classmethod
-    def parse_file(cls, path: Path):
+    def from_file(cls, path: Path):
         with open(path) as f:
             return cls(f.read())
 
