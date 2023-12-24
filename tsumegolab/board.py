@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from enum import IntEnum, StrEnum, auto
+from enum import IntEnum
 from typing import Iterator
 
 import numpy as np
@@ -16,12 +16,6 @@ class Color(IntEnum):
     BLACK = 1
     EMPTY = 0
     WHITE = -1
-
-
-class KoRule(StrEnum):
-    SIMPLE = auto()
-    POSITIONAL = auto()
-    SITUATIONAL = auto()
 
 
 @dataclass

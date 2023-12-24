@@ -1,6 +1,6 @@
 from pprint import pprint
 
-from tsumegolab.katago import KataAnalysis
+from tsumegolab.katago import KataAnalysis, QueryData
 from tsumegolab.utils.kifu_utils import sgf_to_initial_stones
 
 path = (
@@ -11,15 +11,19 @@ path = (
 initial_stones_stones = sgf_to_initial_stones(path)
 
 pprint(initial_stones_stones)
-
 kata = KataAnalysis()
 
 unexplored = [[]]
 
 while unexplored:
     moves = unexplored.pop()
-    black_response = kata.query(initial_stones_stones, moves)
-    pprint(black_response["rootInfo"])
+    query = QueryData(
+        initial_stones=initial_stones_stones,
+        moves=moves,
+    )
+
+    black_response = kata.query(query)
+    pprint(black_response)
     black_best_score = black_response["rootInfo"]["scoreLead"]
     black_stdev = black_response["rootInfo"]["scoreStdev"]
     white_response = kata.query(
