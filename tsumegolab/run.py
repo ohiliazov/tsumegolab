@@ -1,5 +1,3 @@
-from pprint import pprint
-
 from tsumegolab.katago import KataAnalysis, PresetRules, QueryData
 from tsumegolab.utils.kifu_utils import sgf_to_initial_stones
 
@@ -10,7 +8,6 @@ path = (
 
 initial_stones_stones = sgf_to_initial_stones(path)
 
-pprint(initial_stones_stones)
 kata = KataAnalysis()
 
 unexplored = [[]]
@@ -27,6 +24,5 @@ while unexplored:
 
     kata.query(query)
     black_response = kata.get(query.id)
-    pprint(black_response.model_dump())
 
 kata.engine.kill()
