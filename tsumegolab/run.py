@@ -1,6 +1,6 @@
 from pprint import pprint
 
-from tsumegolab.katago import KataAnalysis, QueryData
+from tsumegolab.katago import KataAnalysis, PresetRules, QueryData
 from tsumegolab.utils.kifu_utils import sgf_to_initial_stones
 
 path = (
@@ -17,25 +17,16 @@ unexplored = [[]]
 
 while unexplored:
     moves = unexplored.pop()
-    query = QueryData(
+    query = QueryData.model_construct(
         initial_stones=initial_stones_stones,
         moves=moves,
+        rules=PresetRules.JAPANESE,
+        board_x_size=19,
+        board_y_size=19,
     )
 
-    black_response = kata.query(query)
-    pprint(black_response)
-    black_best_score = black_response["rootInfo"]["scoreLead"]
-    black_stdev = black_response["rootInfo"]["scoreStdev"]
-    white_response = kata.query(
-        initial_stones_stones, moves, initialPlayer="W"
-    )
-    pprint(white_response["rootInfo"])
-    white_best_score = white_response["rootInfo"]["scoreLead"]
+    kata.query(query)
+    black_response = kata.get(query.id)
+    pprint(black_response.model_dump())
 
-    score_threshold = (black_best_score - white_best_score) / 2
-    for black_move in black_response["moveInfos"]:
-        if black_best_score - black_move["scoreLead"] < score_threshold:
-            print("B", black_move)
-    for white_move in white_response["moveInfos"]:
-        if white_best_score - white_move["scoreLead"] > -score_threshold:
-            print("W", white_move)
+kata.engine.kill()
