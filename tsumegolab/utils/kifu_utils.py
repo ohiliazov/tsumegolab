@@ -12,8 +12,8 @@ from tsumegolab.utils.coord_utils import (
 from tsumegolab.utils.tsumego_utils import tsumego_frame
 
 
-def sgf_to_initial_stones(path: Path | str):
-    tsumego = tsumego_frame(sgf_root_to_board(path).board)
+def sgf_to_initial_stones_and_allowed_moves(path: Path | str):
+    tsumego, inside, color = tsumego_frame(sgf_root_to_board(path).board)
 
     initial_stones = []
     for coord in np.argwhere(tsumego == Color.BLACK):
@@ -21,7 +21,7 @@ def sgf_to_initial_stones(path: Path | str):
     for coord in np.argwhere(tsumego == Color.WHITE):
         initial_stones.append(("W", int_to_gtp_coord(coord)))
 
-    return initial_stones
+    return initial_stones, inside, color
 
 
 def sgf_root_to_board(path: str | Path) -> Board:

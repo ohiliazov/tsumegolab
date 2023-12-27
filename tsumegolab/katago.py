@@ -88,7 +88,7 @@ class PresetRules(StrEnum):
     AGA_BUTTON = "aga-button"
 
 
-class AvoidMoveDict(CamelCaseModel):
+class MovesDict(CamelCaseModel):
     player: Color
     moves: list[GTPLocation]
     until_depth: PositiveInt
@@ -115,8 +115,8 @@ class QueryData(CamelCaseModel):
     include_moves_ownership_stdev: bool | None = None
     include_policy: bool | None = None
     include_p_v_visits: bool | None = None
-    avoid_moves: list[AvoidMoveDict] | None = None
-    allow_moves: list[AvoidMoveDict] | None = None
+    avoid_moves: list[MovesDict] | None = None
+    allow_moves: list[MovesDict] | None = None
     override_settings: dict[str, Any] | None = None
     report_during_search_every: float | None = None
     priority: int | None = None

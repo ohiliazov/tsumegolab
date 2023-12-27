@@ -34,27 +34,20 @@ def get_inside_mask(board, distance: int) -> np.ndarray:
     )
 
 
-def get_outside_mask(board: np.ndarray, distance: int) -> np.ndarray:
-    not_inside_mask = ~get_inside_mask(board, distance)
-    return binary_dilation(not_inside_mask, structure=edge_structure)
+def get_outside_mask(inside_mask: np.ndarray) -> np.ndarray:
+    return binary_dilation(~inside_mask, structure=edge_structure)
 
 
-def get_wall_mask(board: np.ndarray, distance: int) -> np.ndarray:
-    inside_mask = get_inside_mask(board, distance)
-    outside_mask = get_outside_mask(board, distance)
+def tsumego_frame_mask(
+    inside_mask: np.ndarray, outside_mask: np.ndarray
+) -> np.ndarray:
+    outside = np.copy(outside_mask)
 
-    return inside_mask & outside_mask
-
-
-def tsumego_frame_mask(board: np.ndarray, distance: int) -> np.ndarray:
-    outside = get_outside_mask(board, distance)
-    wall = get_wall_mask(board, distance)
-
-    r, c = board.shape
+    r, c = inside_mask.shape
     for i, j in itertools.product(range(r), range(c)):
         outside[i, j] = outside[i, j] and i % 2 + j % 2 == 1
 
-    outside[wall] = True
+    outside[inside_mask & outside_mask] = True
     return outside
 
 
@@ -66,9 +59,7 @@ def count_stones_by_axis(board: np.ndarray, axis: int) -> int:
     ).sum()
 
 
-def guess_outside_color(board: np.ndarray, distance: int):
-    outside_mask = get_outside_mask(board, distance)
-
+def guess_outside_color(board: np.ndarray, outside_mask: np.ndarray):
     colors_sum = 0
 
     if outside_mask[0].all():
@@ -87,15 +78,18 @@ def tsumego_frame(
     board: np.ndarray,
     distance: int = 4,
     ko_allowed: bool = False,
-) -> np.ndarray:
+) -> tuple[np.ndarray, np.ndarray, int]:
     board, rotation_spec = normalize_rotation(board)
 
-    mask = tsumego_frame_mask(board, distance)
-    outside_color = guess_outside_color(board, distance)
-    board[mask] = outside_color
+    inside_mask = get_inside_mask(board, distance)
+    outside_mask = get_outside_mask(inside_mask)
+    mask = tsumego_frame_mask(inside_mask, outside_mask)
+    outside_color = guess_outside_color(board, outside_mask)
 
+    board[mask] = outside_color
     ko_threat = inside_ko_threat if ko_allowed else outside_ko_threat
     ko_x, ko_y = ko_threat.shape
     board[-ko_x:, -ko_y:] = ko_threat * outside_color
-
-    return rotate_board(board, rotation_spec)
+    return rotate_board(board, rotation_spec), rotate_board(
+        inside_mask, rotation_spec
+    ), outside_color
