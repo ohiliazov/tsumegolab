@@ -186,15 +186,12 @@ class KataAnalysis:
             args=cmd,
             stdin=PIPE,
             stdout=PIPE,
-            stderr=PIPE,
             text=True,
         )
         self.results: dict[uuid.UUID, KataResponse] = {}
 
         self._stdout_thread = Thread(target=self.collect_results)
         self._stdout_thread.start()
-        # self._stderr_thread = Thread(target=self.collect_errors)
-        # self._stderr_thread.start()
 
     def collect_results(self):
         while self.engine.poll() is None:

@@ -14,7 +14,7 @@ from tsumegolab.utils.tsumego_utils import tsumego_frame
 
 def sgf_to_initial_stones_and_allowed_moves(path: Path | str):
     tsumego, inside, color = tsumego_frame(sgf_root_to_board(path).board)
-
+    save_board_to_sgf(Board(tsumego), Path(path).parent.parent / "test.sgf")
     initial_stones = []
     for coord in np.argwhere(tsumego == Color.BLACK):
         initial_stones.append(("B", int_to_gtp_coord(coord)))

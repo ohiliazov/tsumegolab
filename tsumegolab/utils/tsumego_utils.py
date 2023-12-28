@@ -59,19 +59,13 @@ def count_stones_by_axis(board: np.ndarray, axis: int) -> int:
     ).sum()
 
 
-def guess_outside_color(board: np.ndarray, outside_mask: np.ndarray):
-    colors_sum = 0
+def guess_outside_color(board: np.ndarray):
+    bx, by = np.average(np.where(board == 1), axis=1)
+    wx, wy = np.average(np.where(board == -1), axis=1)
 
-    if outside_mask[0].all():
-        colors_sum += count_stones_by_axis(np.flip(board), axis=0)
-    if outside_mask[:, 0].all():
-        colors_sum += count_stones_by_axis(np.flip(board), axis=1)
-    if outside_mask[-1].all():
-        colors_sum += count_stones_by_axis(board, axis=0)
-    if outside_mask[:, -1].all():
-        colors_sum += count_stones_by_axis(board, axis=1)
-
-    return max(-1, min(1, colors_sum))
+    if bx**2 + by**2 > wx**2 + wy**2:
+        return 1
+    return -1
 
 
 def tsumego_frame(
@@ -84,7 +78,7 @@ def tsumego_frame(
     inside_mask = get_inside_mask(board, distance)
     outside_mask = get_outside_mask(inside_mask)
     mask = tsumego_frame_mask(inside_mask, outside_mask)
-    outside_color = guess_outside_color(board, outside_mask)
+    outside_color = guess_outside_color(board)
 
     board[mask] = outside_color
     ko_threat = inside_ko_threat if ko_allowed else outside_ko_threat
