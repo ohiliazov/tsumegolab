@@ -24,7 +24,7 @@ def sgf_to_initial_stones_and_allowed_moves(path: Path | str):
     return initial_stones, inside, color
 
 
-def sgf_root_to_board(path: str | Path) -> Board:
+def sgf_root_to_board(path: str | Path) -> np.ndarray:
     sgf_parser = SGFParser.from_file(Path(path))
     tree = sgf_parser.parse_collection()
     root_node = tree[0].trunk[0]
@@ -43,7 +43,7 @@ def sgf_root_to_board(path: str | Path) -> Board:
     for coord in root_node.get("AW", []):
         arr[sgf_to_int_coord(coord)] = Color.WHITE
 
-    return Board(arr)
+    return arr
 
 
 def make_root_node(board: np.ndarray) -> SGFNode:

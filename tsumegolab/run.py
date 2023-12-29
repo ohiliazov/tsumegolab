@@ -1,18 +1,18 @@
 import numpy as np
 
 from tsumegolab.katago import Color, KataAnalysis, PresetRules, QueryData
-from tsumegolab.utils.kifu_utils import sgf_to_initial_stones_and_allowed_moves
+from tsumegolab.tsumego import Tsumego
+from tsumegolab.utils.kifu_utils import sgf_root_to_board
 
 path = (
     "/Users/oleksandr.hiliazov/PycharmProjects/tsumegolab"
     "/tests/problems/cho-1-elementary/cho-1-elementary-11.sgf"
 )
 
-(
-    initial_stones_stones,
-    allowed_mask,
-    outside_color,
-) = sgf_to_initial_stones_and_allowed_moves(path)
+board = sgf_root_to_board(path)
+tsumego = Tsumego(board, ko_allowed=True)
+initial_stones_stones = tsumego.stones
+allowed_mask = tsumego.allowed_moves_mask
 
 kata = KataAnalysis()
 
@@ -56,6 +56,6 @@ while unexplored:
 
     print(black_ownership)
     print(allowed_mask)
-    print(np.all(black_ownership[allowed_mask] == outside_color))
+    print(np.all(black_ownership[allowed_mask] == tsumego.frame_color))
 
 kata.engine.kill()

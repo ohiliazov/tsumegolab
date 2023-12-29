@@ -51,14 +51,6 @@ def tsumego_frame_mask(
     return outside
 
 
-def count_stones_by_axis(board: np.ndarray, axis: int) -> int:
-    return np.take_along_axis(
-        board,
-        np.argmax(board != 0, axis=axis, keepdims=True),
-        axis=axis,
-    ).sum()
-
-
 def guess_outside_color(board: np.ndarray):
     bx, by = np.average(np.where(board == 1), axis=1)
     wx, wy = np.average(np.where(board == -1), axis=1)
