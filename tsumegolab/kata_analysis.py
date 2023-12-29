@@ -17,6 +17,8 @@ from pydantic import (
     constr,
 )
 
+from tsumegolab.config import KataConfig
+
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "katago_analysis.cfg"
 logger.add("katago.log", level="DEBUG")
 
@@ -94,7 +96,7 @@ class MovesDict(CamelCaseModel):
     until_depth: PositiveInt
 
 
-class QueryData(CamelCaseModel):
+class KataRequest(CamelCaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     moves: list[Stone]
     initial_stones: list[Stone] | None = None
@@ -170,54 +172,74 @@ class KataResponse(CamelCaseModel):
     policy: list[NormalizedValue] | None = None
 
 
+class KataErrorResponse(CamelCaseModel):
+    id: str | None = None
+    error: str | None = None
+    warning: str | None = None
+    field: str | None = None
+
+
 class KataAnalysis:
-    def __init__(
-        self,
-        engine_path: str = "katago",
-        config_path: Path | str = CONFIG_PATH,
-        model_path: str | None = None,
-    ):
-        cmd = [engine_path, "analysis", "-config", str(config_path)]
+    def __init__(self, config: KataConfig):
+        self.output_path = config.output_path
 
-        if model_path:
-            cmd.extend(["-model", model_path])
+        cmd = [
+            str(config.engine_path),
+            "analysis",
+            "-config",
+            str(config.config_path),
+        ]
 
+        logger.info("Starting katago engine...")
+        logger.info(" ".join(cmd))
         self.engine = Popen(
             args=cmd,
             stdin=PIPE,
             stdout=PIPE,
+            stderr=PIPE,
             text=True,
         )
-        self.results: dict[uuid.UUID, KataResponse] = {}
 
         self._stdout_thread = Thread(target=self.collect_results)
+        self._stderr_thread = Thread(target=self.print_stderr)
+
         self._stdout_thread.start()
+        self._stderr_thread.start()
 
     def collect_results(self):
         while self.engine.poll() is None:
             line = self.engine.stdout.readline().strip()
+            logger.debug(line)
 
             try:
                 response = KataResponse.model_validate_json(line)
-                logger.debug(response.model_dump_json())
-                self.results[response.id] = response
             except ValidationError:
-                pass
+                error = KataErrorResponse.model_validate_json(line)
+                logger.error(error)
+                continue
 
-    def collect_errors(self):
+            response_path = self.output_path / f"{response.id}.json"
+
+            with response_path.open("w") as file:
+                file.write(response.model_dump_json(by_alias=True, indent=2))
+
+    def print_stderr(self):
         while self.engine.poll() is None:
             logger.debug(self.engine.stderr.readline().strip())
 
-    def query(self, query: QueryData):
-        query_str = query.model_dump_json(by_alias=True, exclude_none=True)
-        logger.debug(f"Sending query: {query_str}")
-        self.engine.stdin.write(query_str + "\n")
+    def send_request(self, request: KataRequest):
+        logger.info(f"Incoming request: {request}")
+
+        query = request.model_dump_json(by_alias=True, exclude_none=True)
+
+        self.engine.stdin.write(f"{query}\n")
         self.engine.stdin.flush()
 
-    def get_nowait(self, query_id: uuid.UUID) -> KataResponse | None:
-        return self.results.pop(query_id, None)
+    def get(self, request_id: uuid.UUID, delay: int = 1) -> KataResponse:
+        response_path = self.output_path / f"{request_id}.json"
 
-    def get(self, query_id: uuid.UUID, delay: int = 1) -> KataResponse:
-        while query_id not in self.results:
+        while not response_path.exists():
             time.sleep(delay)
-        return self.results.pop(query_id)
+
+        with response_path.open() as file:
+            return KataResponse.model_validate_json(file.read())

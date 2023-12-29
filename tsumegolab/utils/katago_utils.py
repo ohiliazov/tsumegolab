@@ -1,6 +1,6 @@
 import numpy as np
 
-from tsumegolab.katago import Color, MovesDict
+from tsumegolab.kata_analysis import Color, MovesDict
 from tsumegolab.utils.coord_utils import int_to_gtp_coord
 
 

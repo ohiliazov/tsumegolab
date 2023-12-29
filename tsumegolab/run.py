@@ -1,7 +1,7 @@
 import numpy as np
 
-from tsumegolab.katago import Color, KataAnalysis, PresetRules, QueryData
-from tsumegolab.tsumego import Tsumego
+from tsumegolab.kata_analysis import KataAnalysis, KataRequest, PresetRules
+from tsumegolab.tsumego import Color, Tsumego
 from tsumegolab.utils.kifu_utils import sgf_root_to_board
 
 path = (
@@ -11,8 +11,11 @@ path = (
 
 board = sgf_root_to_board(path)
 tsumego = Tsumego(board, ko_allowed=True)
-initial_stones_stones = tsumego.stones
 allowed_mask = tsumego.allowed_moves_mask
+
+if tsumego.frame_color:
+    pass
+
 
 kata = KataAnalysis()
 
@@ -20,9 +23,9 @@ unexplored = [[]]
 
 while unexplored:
     moves = unexplored.pop()
-    query_as_black = QueryData.model_construct(
-        initial_player=Color.BLACK,
-        initial_stones=initial_stones_stones,
+    query_as_black = KataRequest.model_construct(
+        initial_player=Color.B.name,
+        initial_stones=tsumego.initial_stones,
         moves=moves,
         rules=PresetRules.JAPANESE,
         board_x_size=19,
@@ -31,9 +34,9 @@ while unexplored:
         max_visits=2500,
         # include_moves_ownership=True,
     )
-    query_as_white = QueryData.model_construct(
-        initial_player=Color.WHITE,
-        initial_stones=initial_stones_stones,
+    query_as_white = KataRequest.model_construct(
+        initial_player=Color.W.name,
+        initial_stones=tsumego.initial_stones,
         moves=moves,
         rules=PresetRules.JAPANESE,
         board_x_size=19,
@@ -42,8 +45,8 @@ while unexplored:
         # include_moves_ownership=True,
     )
 
-    kata.query(query_as_black)
-    kata.query(query_as_white)
+    kata.send_request(query_as_black)
+    kata.send_request(query_as_white)
     black_response = kata.get(query_as_black.id)
     white_response = kata.get(query_as_white.id)
 

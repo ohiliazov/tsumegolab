@@ -5,6 +5,8 @@ from enum import IntEnum
 import numpy as np
 from scipy.ndimage import binary_dilation
 
+from tsumegolab.utils.coord_utils import int_to_gtp_coord
+
 # fmt: off
 STRUCTURE = np.array(
     [
@@ -32,11 +34,6 @@ DEFENCE_KO_THREAT = np.array(
     dtype=np.int8,
 )
 # fmt: on
-
-# outside B ko        DEFENCE_KO_THREAT * 1
-# outside B no-ko     OFFENCE_KO_THREAT * 1
-# outside W ko        OFFENCE_KO_THREAT * -1
-# outside W no-ko     DEFENCE_KO_THREAT * -1
 
 
 class Color(IntEnum):
@@ -138,10 +135,14 @@ class Tsumego:
         )
 
     @property
-    def stones(self) -> list[tuple[Color, tuple[int, int]]]:
+    def initial_stones(self) -> list[tuple[str, str]]:
         stones = []
-        for x, y in np.argwhere(self.tsumego_frame == Color.B):
-            stones.append((Color.B, (x, y)))
-        for x, y in np.argwhere(self.tsumego_frame == Color.W):
-            stones.append((Color.W, (x, y)))
+        for coord in np.argwhere(self.tsumego_frame == Color.B):
+            stones.append((Color.B.name, int_to_gtp_coord(coord)))
+        for coord in np.argwhere(self.tsumego_frame == Color.W):
+            stones.append((Color.W.name, int_to_gtp_coord(coord)))
         return stones
+
+    @property
+    def to_kill(self) -> bool:
+        return self.frame_color == Color.B
