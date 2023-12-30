@@ -1,4 +1,3 @@
-import time
 import uuid
 from enum import StrEnum
 from pathlib import Path
@@ -15,6 +14,12 @@ from pydantic import (
     ValidationError,
     confloat,
     constr,
+)
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_incrementing,
 )
 
 from tsumegolab.config import KataConfig
@@ -201,45 +206,38 @@ class KataAnalysis:
         )
 
         self._stdout_thread = Thread(target=self.collect_results)
-        self._stderr_thread = Thread(target=self.print_stderr)
-
         self._stdout_thread.start()
-        self._stderr_thread.start()
 
     def collect_results(self):
         while self.engine.poll() is None:
             line = self.engine.stdout.readline().strip()
-            logger.debug(line)
+            logger.info(f"RES> {line}")
 
             try:
                 response = KataResponse.model_validate_json(line)
             except ValidationError:
-                error = KataErrorResponse.model_validate_json(line)
-                logger.error(error)
-                continue
+                response = KataErrorResponse.model_validate_json(line)
 
             response_path = self.output_path / f"{response.id}.json"
 
             with response_path.open("w") as file:
                 file.write(response.model_dump_json(by_alias=True, indent=2))
 
-    def print_stderr(self):
-        while self.engine.poll() is None:
-            logger.debug(self.engine.stderr.readline().strip())
-
     def send_request(self, request: KataRequest):
-        logger.info(f"Incoming request: {request}")
+        logger.info(f"REQ> {request}")
 
         query = request.model_dump_json(by_alias=True, exclude_none=True)
 
         self.engine.stdin.write(f"{query}\n")
         self.engine.stdin.flush()
 
-    def get(self, request_id: uuid.UUID, delay: int = 1) -> KataResponse:
+    @retry(
+        retry=retry_if_exception_type(FileNotFoundError),
+        wait=wait_incrementing(1, 0.5, 5),
+        stop=stop_after_attempt(100),
+    )
+    def get(self, request_id: uuid.UUID) -> KataResponse:
         response_path = self.output_path / f"{request_id}.json"
-
-        while not response_path.exists():
-            time.sleep(delay)
 
         with response_path.open() as file:
             return KataResponse.model_validate_json(file.read())
