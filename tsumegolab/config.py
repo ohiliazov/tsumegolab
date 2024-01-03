@@ -12,21 +12,17 @@ def locate_katago_engine() -> Path:
     return Path(shutil.which("katago"))
 
 
-class KataConfig(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="kata_")
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="tsumego_")
 
     engine_path: FilePath = Field(default_factory=locate_katago_engine)
     config_path: FilePath = APP_ROOT / "config" / "katago_analysis.cfg"
     output_path: DirectoryPath = APP_ROOT / "output"
 
-
-class WebsocketConfig(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="ws_")
-
-    host: str = "localhost"
-    port: int = 15555
+    wall_distance: int = 4
+    ownership_threshold: float = 2 / 3
 
 
 if __name__ == "__main__":
-    kata_config = KataConfig()
+    kata_config = Settings()
     logger.info(kata_config)

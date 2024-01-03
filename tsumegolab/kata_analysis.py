@@ -1,4 +1,4 @@
-import uuid
+import os
 from enum import StrEnum
 from pathlib import Path
 from subprocess import PIPE, Popen
@@ -9,7 +9,6 @@ from loguru import logger
 from pydantic import (
     BaseModel,
     ConfigDict,
-    Field,
     PositiveInt,
     ValidationError,
     confloat,
@@ -22,7 +21,7 @@ from tenacity import (
     wait_incrementing,
 )
 
-from tsumegolab.config import KataConfig
+from tsumegolab.config import Settings
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "katago_analysis.cfg"
 logger.add("katago.log", level="DEBUG")
@@ -102,7 +101,7 @@ class MovesDict(CamelCaseModel):
 
 
 class KataRequest(CamelCaseModel):
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    id: str
     moves: list[Stone]
     initial_stones: list[Stone] | None = None
     initial_player: Color | None = None
@@ -167,7 +166,7 @@ class RootInfo(CamelCaseModel):
 
 
 class KataResponse(CamelCaseModel):
-    id: uuid.UUID
+    id: str
     is_during_search: bool
     turn_number: int
     move_infos: list[MoveInfo]
@@ -185,7 +184,7 @@ class KataErrorResponse(CamelCaseModel):
 
 
 class KataAnalysis:
-    def __init__(self, config: KataConfig):
+    def __init__(self, config: Settings):
         self.output_path = config.output_path
 
         cmd = [
@@ -195,8 +194,8 @@ class KataAnalysis:
             str(config.config_path),
         ]
 
-        logger.info("Starting katago engine...")
-        logger.info(" ".join(cmd))
+        logger.debug("Starting katago engine...")
+        logger.debug(" ".join(cmd))
         self.engine = Popen(
             args=cmd,
             stdin=PIPE,
@@ -211,7 +210,11 @@ class KataAnalysis:
     def collect_results(self):
         while self.engine.poll() is None:
             line = self.engine.stdout.readline().strip()
-            logger.info(f"RES> {line}")
+
+            if not line:
+                continue
+
+            logger.debug(f"RES> {line}")
 
             try:
                 response = KataResponse.model_validate_json(line)
@@ -224,9 +227,15 @@ class KataAnalysis:
                 file.write(response.model_dump_json(by_alias=True, indent=2))
 
     def send_request(self, request: KataRequest):
-        logger.info(f"REQ> {request}")
+        logger.debug(f"REQ> {request}")
 
         query = request.model_dump_json(by_alias=True, exclude_none=True)
+
+        response_path = self.output_path / f"{request.id}.json"
+        try:
+            os.remove(response_path)
+        except FileNotFoundError:
+            pass
 
         self.engine.stdin.write(f"{query}\n")
         self.engine.stdin.flush()
@@ -236,7 +245,7 @@ class KataAnalysis:
         wait=wait_incrementing(1, 0.5, 5),
         stop=stop_after_attempt(100),
     )
-    def get(self, request_id: uuid.UUID) -> KataResponse:
+    def get(self, request_id: str) -> KataResponse:
         response_path = self.output_path / f"{request_id}.json"
 
         with response_path.open() as file:
